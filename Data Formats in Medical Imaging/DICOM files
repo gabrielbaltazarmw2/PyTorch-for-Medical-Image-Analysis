@@ -1,0 +1,99 @@
+# Arquivos DICOM
+
+# Importando o drive para o Colab:
+from google.colab import drive
+
+# Monta o Google Drive
+drive.mount('/content/drive')
+
+# Importações
+from pathlib import Path
+import matplotlib.pyplot as plt
+import pydicom
+import SimpleITK as sitk
+
+# Instalando a biblioteca pydicom
+!pip install pydicom
+
+# Carregando arquivo DICOM do drive:
+dicom_file = pydicom.read_file("/content/drive/MyDrive/Colab Notebooks/Pytorch for medical images/07 Data Format/03-Data-Formats/03-Data-Formats/ID_0000_AGE_0060_CONTRAST_1_CT.dcm")
+
+# Exibindo informações sobre o arquivo DICOM
+print(dicom_file)
+
+# Acessando informações específicas do DICOM
+print(dicom_file[0x0028, 0x0010])
+print(dicom_file.Rows)
+
+# Visualizando a imagem CT
+ct = dicom_file.pixel_array
+plt.figure()
+plt.imshow(ct, cmap='gray');
+
+# MRI SCAN
+
+# Definindo o caminho para os arquivos de MRI
+path_to_head_mri = Path("/content/drive/MyDrive/Colab Notebooks/Pytorch for medical images/07 Data Format/03-Data-Formats/03-Data-Formats/SE000001")
+
+# Listando todos os arquivos no diretório
+all_files = list(path_to_head_mri.glob("*"))
+print(all_files)
+
+# Lendo os arquivos DICOM de MRI
+mri_data = []
+for path in all_files:
+    data = pydicom.read_file(path)
+    mri_data.append(data)
+
+# Exibindo informações de localização das fatias
+for slice in mri_data[:5]:
+    print(slice.SliceLocation)
+
+# Ordenando os dados de MRI com base na localização das fatias
+mri_data_ordered = sorted(mri_data, key=lambda slice: slice.SliceLocation)
+
+# Exibindo informações de localização das fatias ordenadas
+for slice in mri_data_ordered[:5]:
+    print(slice.SliceLocation)
+
+# Criando um volume completo da MRI
+full_volume = []
+for slice in mri_data_ordered:
+    full_volume.append(slice.pixel_array)
+
+# Visualizando as primeiras 9 fatias do volume completo
+fig, axis = plt.subplots(3, 3, figsize=(10, 10))
+
+slice_counter = 0
+for i in range(3):
+    for j in range(3):
+        axis[i][j].imshow(full_volume[slice_counter], cmap="gray")
+        slice_counter += 1
+
+# Instalando a biblioteca SimpleITK
+!pip install SimpleITK
+
+# Utilizando SimpleITK para ler a série de imagens DICOM de MRI
+series_ids = sitk.ImageSeriesReader.GetGDCMSeriesIDs(str(path_to_head_mri))
+print(series_ids)
+
+# Obtendo os nomes de arquivos da série DICOM
+series_file_names = sitk.ImageSeriesReader.GetGDCMSeriesFileNames(str(path_to_head_mri), series_ids[0])
+print(series_file_names)
+
+# Criando um leitor de série DICOM e executando a leitura
+series_reader = sitk.ImageSeriesReader()
+series_reader.SetFileNames(series_file_names)
+image_data = series_reader.Execute()
+
+# Obtendo o array NumPy da imagem
+head_mri = sitk.GetArrayFromImage(image_data)
+
+# Exibindo as primeiras 9 fatias da imagem de MRI
+fig, axis = plt.subplots(3, 3, figsize=(10, 10))
+
+slice_counter = 0
+for i in range(3):
+    for j in range(3):
+        axis[i][j].imshow(head_mri[slice_counter], cmap="gray")
+        slice_counter += 1
